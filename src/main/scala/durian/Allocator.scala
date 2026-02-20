@@ -26,4 +26,8 @@ object Allocator {
       res
     }
   }
+
+  class NoOp(val memorySegment: MemorySegment) extends Allocator {
+    def alloc(size: Long): Address = throw new UnsupportedOperationException("No-op allocator can't allocate")
+  }
 }

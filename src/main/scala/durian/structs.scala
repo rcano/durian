@@ -8,7 +8,12 @@ opaque type Pointer[S <: Struct, Allocator <: durian.Allocator] <: S = S
 object Pointer {
   def apply[S <: Struct, Allocator <: durian.Allocator](a: Address): Pointer[S, Allocator] = a.asInstanceOf
 
-  extension [S <: Struct, A <: durian.Allocator](p: Pointer[S, A]) def memAddress: Address = p
+  extension [S <: Struct, A <: durian.Allocator](p: Pointer[S, A]) {
+    /** Memory address relative to its allocator */
+    def relMemAddress: Address = p
+    /** Native memory address*/
+    def memAddress(using a: A): Address = a.memorySegment.rootAddress + p
+  }
 
   implicit class PointerSelectable[S <: Struct, A <: Allocator](private val p: Pointer[S, A]) extends AnyVal with Selectable {
     inline def selectDynamic(using mirror: Struct.StructOf[S], layout: StructLayout[S], allocator: A)(
@@ -16,14 +21,14 @@ object Pointer {
     )(using posType: Util.TypeCapture[Util.IndexOf[f.type, mirror.MirroredElemLabels]])(using
         index: ValueOf[posType.Out],
         serde: Serde[Tuple.Head[Tuple.Drop[mirror.MirroredElemTypes, posType.Out]]]
-    ): serde.Out = serde.read(allocator.memorySegment)(p.memAddress + layout.offset(index.value))
+    ): serde.Out = serde.read(allocator.memorySegment)(p.relMemAddress + layout.offset(index.value))
 
     inline def applyDynamic(using mirror: Struct.StructOf[S], layout: StructLayout[S], allocator: A)(
         f: String & Singleton
     )(using erased posType: Util.TypeCapture[Util.IndexOf[Util.StringDropRight[f.type, 4], mirror.MirroredElemLabels]])(using
         index: ValueOf[posType.Out],
         serde: Serde[Tuple.Head[Tuple.Drop[mirror.MirroredElemTypes, posType.Out]]]
-    )(value: serde.Out): Unit = serde.write(allocator.memorySegment)(p.memAddress + layout.offset(index.value), value)
+    )(value: serde.Out): Unit = serde.write(allocator.memorySegment)(p.relMemAddress + layout.offset(index.value), value)
   }
 
 }

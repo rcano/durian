@@ -15,12 +15,11 @@ private[durian] object Util {
 
   type StringDropRight[S <: String, V <: Int] = Substring[S, 0, Length[S] - V]
 
-  erased trait TypeCapture[T] { 
+  class TypeCapture[T]() extends compiletime.Erased { 
     type Out = T
   }
   object TypeCapture {
-    erased given [T]: TypeCapture[T] = compiletime.erasedValue
-
-    erased def apply[T]: TypeCapture[T] = compiletime.erasedValue
+    inline given [T]: TypeCapture[T] = new TypeCapture[T]()
+    def apply[T]: TypeCapture[T] = new TypeCapture[T]()
   }
 }

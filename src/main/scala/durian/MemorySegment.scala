@@ -1,6 +1,7 @@
 package durian
 
 trait MemorySegment {
+  def rootAddress: Address
   def getByte(addr: Address): Byte
   def getShort(addr: Address): Short
   def getInt(addr: Address): Int
