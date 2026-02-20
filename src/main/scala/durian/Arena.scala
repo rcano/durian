@@ -19,6 +19,7 @@ object Arena {
     val allocator = Allocator.NoOp(segment)
     val value: Pointer[S, AllocatedStructAllocator[S, this.type]] = Pointer(Address.Zero)
   }
+  given Conversion[AllocatedStruct[?], jfm.MemorySegment] = _.segment.memorySegment
 
   opaque type AllocatedStructAllocator[S <: Struct, AS <: AllocatedStruct[S]] <: Allocator = Allocator
   object AllocatedStructAllocator {
