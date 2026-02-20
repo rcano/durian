@@ -98,4 +98,16 @@ class BasicTests extends munit.FunSuite {
     assertEquals(c.value.green, 240.toByte)
     assertEquals(c.value.blue, 100.toByte)
   }
+
+  test("vectors") {
+    using(Allocator.Bump(memorySegment)) {
+      val c = Vec[Color](10)
+      c(0).red = 10
+      c(1).red = 15
+      assertEquals(c(0).red, 10.toByte)
+      assertEquals(c(1).red, 15.toByte)
+      assertEquals(c(2).red, 0.toByte)
+
+    }
+  }
 }
