@@ -38,7 +38,3 @@ object Allocator {
     def alloc(size: Long): Address = throw new UnsupportedOperationException("No-op allocator can't allocate")
   }
 }
-
-case class AllocatedStruct[S <: Struct, M: MemorySegment](segment: M) {
-  val value: Pointer[S, segment.type] = Pointer.unsafe(Address.Zero)
-}

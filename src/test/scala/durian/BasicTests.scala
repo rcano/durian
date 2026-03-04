@@ -88,13 +88,13 @@ class BasicTests extends munit.FunSuite {
     val arena = Arena(java.lang.foreign.Arena.ofAuto())
 
     val c = arena.allocStruct[Color]
-    c.value.→.red := 10
-    c.value.→.green := 240.toByte
-    c.value.→.blue := 100
+    c.→.red := 10
+    c.→.green := 240.toByte
+    c.→.blue := 100
 
-    assertEquals(c.value.→.red(), 10.toByte)
-    assertEquals(c.value.→.green(), 240.toByte)
-    assertEquals(c.value.→.blue(), 100.toByte)
+    assertEquals(c.→.red(), 10.toByte)
+    assertEquals(c.→.green(), 240.toByte)
+    assertEquals(c.→.blue(), 100.toByte)
   }
 
   test("vectors") {
