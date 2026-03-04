@@ -22,4 +22,10 @@ private[durian] object Util {
     inline given [T]: TypeCapture[T] = new TypeCapture[T]()
     def apply[T]: TypeCapture[T] = new TypeCapture[T]()
   }
+
+  inline def typeDescr[T]: String = ${typeDescrMacro[T]}
+  private def typeDescrMacro[T: quoted.Type](using q: quoted.Quotes): quoted.Expr[String] = {
+    import q.reflect.*
+    Literal(StringConstant(TypeTree.of[T].show)).asExprOf[String]
+  }
 }

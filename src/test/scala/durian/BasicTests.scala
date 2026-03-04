@@ -1,88 +1,86 @@
 package durian
 
-import language.experimental.modularity
-import language.experimental.erasedDefinitions
+import java.lang.foreign as jfm
 
 class BasicTests extends munit.FunSuite {
-  val memorySegment: MemorySegment = JfmMemorySegment(java.lang.foreign.MemorySegment.ofArray(new Array[Byte](1024 * 1024 * 10)))
+  def memorySegment: jfm.MemorySegment = java.lang.foreign.MemorySegment.ofArray(new Array[Byte](128))
 
-  type Color = Struct { var alpha: Byte; var red: Byte; var green: Byte; var blue: Byte }
+  test("Struct sizing") {
+    case class Point(x: Int, y: Int) extends Struct derives CompactLayout
+
+    assert(summon[Sized[Point]].size == 8)
+  }
+
+  test("pointer serialization") {
+    val mem: jfm.MemorySegment = memorySegment
+    val p: Pointer[Int, mem.type] = Pointer.unsafe(Address.unsafe(0))
+    p()
+    p := 23
+  }
+
+  test("pointers to structs") {
+    case class Point(x: Int, y: Int) extends Struct derives CompactLayout
+    val mem: jfm.MemorySegment = memorySegment
+    val p: Pointer[Point, mem.type] = Pointer.unsafe(Address.unsafe(0))
+
+    val deref = p.→.x
+  }
+
+  test("pointers to nested structs") {
+    case class Point(x: Int, y: Int) extends Struct derives CompactLayout
+    case class Rectangle(topLeft: Point, botRight: Point) extends Struct derives CompactLayout
+    val mem: jfm.MemorySegment = memorySegment
+    val p: Pointer[Rectangle, mem.type] = Pointer.unsafe(Address.unsafe(0))
+
+    val deref = p.→.topLeft.→.y()
+    println(s"got deref $deref")
+    p.→.botRight.→.x := 84
+  }
+
+  test("structs with pointers to structs") {
+    case class Point(x: Int, y: Int) extends Struct derives CompactLayout
+    case class Rectangle(topLeft: NestedPointer[Point], botRight: NestedPointer[Point]) extends Struct derives CompactLayout
+    val mem: jfm.MemorySegment = memorySegment
+    val r: Pointer[Rectangle, mem.type] = Pointer.unsafe(Address.unsafe(0))
+    val p: Pointer[Point, mem.type] = Pointer.unsafe(Address.unsafe(16))
+    val xp = r.→.botRight := p
+    r.→.topLeft().→.y := 15
+  }
+
+  case class Color private (red: Byte, green: Byte, blue: Byte) extends Struct derives CompactLayout
   object Color {
-    val mirror = Struct.structMirror[Color]
-    given mirror.type = mirror
-    val layout = CompactLayouter.compactLayout[Color](using mirror)
-    given layout.type = layout
-    def apply(red: Byte = 0, green: Byte = 0, blue: Byte = 0, alpha: Byte = 0)(using alloc: Allocator): Pointer[Color, alloc.type] = {
-      val res = alloc.allocStruct[Color]
-      res.alpha = alpha
-      res.red = red
-      res.green = green
-      res.blue = blue
+    def apply(r: Byte, g: Byte, b: Byte)(using a: Allocator): Pointer[Color, a.memorySegment.type] = {
+      val res = a.allocPtr[Color]
+      res.→.red := r
+      res.→.green := g
+      res.→.blue := b
       res
     }
   }
-  import Color.given
 
-  type Health = Struct { var value: Double }
-  object Health {
-    val mirror = Struct.structMirror[Health]
-    given mirror.type = mirror
-    val layout = CompactLayouter.compactLayout[Health](using mirror)
-    given layout.type = layout
-  }
-  import Health.given
+  test("bump allocator direct") {
+    val alloc = Allocator.Bump(memorySegment)
 
-  type Positioned = Struct { var x: Float; var y: Float }
-  object Positioned {
-    val mirror = Struct.structMirror[Positioned]
-    given mirror.type = mirror
-    val layout = CompactLayouter.compactLayout[Positioned](using mirror)
-    given layout.type = layout
-  }
-  import Positioned.given
+    val c = alloc.allocPtr[Color]
+    c.→.red := 10
+    c.→.green := 240.toByte
+    c.→.blue := 100
 
-  type Character = Struct {
-    val health: Inlined[Health]
-    val position: Inlined[Positioned]
-    val color: Inlined[Color]
-  }
-  object Character {
-    val mirror = Struct.structMirror[Character]
-    given mirror.type = mirror
-    val layout = CompactLayouter.compactLayout[Character](using mirror)
-    given layout.type = layout
-  }
-  import Character.given
-
-  test("can allocate based on size") {
-    using(Allocator.Bump(memorySegment)) {
-      val c = Color()
-    }
+    assertEquals(c.→.red(), 10.toByte)
+    assertEquals(c.→.green(), 240.toByte)
+    assertEquals(c.→.blue(), 100.toByte)
   }
 
-  test("can read and write") {
-    using(Allocator.Bump(memorySegment)) {
-      val c = Color()
-      c.red = 10
-      c.green = 240.toByte
-      c.blue = 100
+  test("bump allocator indirect") {
+    using(Allocator.Bump(memorySegment)) { alloc ?=>
+      val c = Color(1.toByte, 2.toByte, 3.toByte)
+      c.→.red := 10
+      c.→.green := 240.toByte
+      c.→.blue := 100
 
-      assertEquals(c.red, 10.toByte)
-      assertEquals(c.green, 240.toByte)
-      assertEquals(c.blue, 100.toByte)
-    }
-  }
-
-  test("can read and write Inlined") {
-    using(Allocator.Bump(memorySegment)) {
-      val c = summon[Allocator].allocStruct[Character]
-      c.position.x = 10
-      c.position.y = 15
-      c.health.value = 100.4
-
-      assertEquals(c.position.x, 10f)
-      assertEquals(c.position.y, 15f)
-      assertEquals(c.health.value, 100.4)
+      assertEquals(c.→.red(), 10.toByte)
+      assertEquals(c.→.green(), 240.toByte)
+      assertEquals(c.→.blue(), 100.toByte)
     }
   }
 
@@ -90,24 +88,23 @@ class BasicTests extends munit.FunSuite {
     val arena = Arena(java.lang.foreign.Arena.ofAuto())
 
     val c = arena.allocStruct[Color]
-    c.value.red = 10
-    c.value.green = 240.toByte
-    c.value.blue = 100
+    c.value.→.red := 10
+    c.value.→.green := 240.toByte
+    c.value.→.blue := 100
 
-    assertEquals(c.value.red, 10.toByte)
-    assertEquals(c.value.green, 240.toByte)
-    assertEquals(c.value.blue, 100.toByte)
+    assertEquals(c.value.→.red(), 10.toByte)
+    assertEquals(c.value.→.green(), 240.toByte)
+    assertEquals(c.value.→.blue(), 100.toByte)
   }
 
   test("vectors") {
-    using(Allocator.Bump(memorySegment)) {
-      val c = Vec[Color](10)
-      c(0).red = 10
-      c(1).red = 15
-      assertEquals(c(0).red, 10.toByte)
-      assertEquals(c(1).red, 15.toByte)
-      assertEquals(c(2).red, 0.toByte)
+    val alloc = Allocator.Bump(memorySegment)
 
-    }
+    val c = Vec[Color](10)(using alloc)
+    c.at(0).→.red := 10
+    c.at(1).→.red := 15
+    assertEquals(c.at(0).→.red(), 10.toByte)
+    assertEquals(c.at(1).→.red(), 15.toByte)
+    assertEquals(c.at(2).→.red(), 0.toByte)
   }
 }

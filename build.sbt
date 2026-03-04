@@ -1,4 +1,4 @@
-val scala3Version = "3.8.2-RC3"
+val scala3Version = "3.8.2"
 
 inThisBuild(
   Seq(
@@ -10,11 +10,8 @@ inThisBuild(
 )
 
 lazy val root = project
-  .dependsOn(macros)
   .in(file("."))
   .settings(
     name := "durian",
-    scalacOptions ++= Seq("-explain", "-experimental"),
+    scalacOptions ++= Seq("-explain", "-preview", "-experimental"),
   )
-
-lazy val macros = project.settings(name := "durian-macros")

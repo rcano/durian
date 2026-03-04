@@ -1,6 +1,7 @@
 package durian
 
 import language.experimental.modularity
+import scala.deriving.Mirror
 
 trait StructLayout[S <: Struct] extends Sized[S] {
 
@@ -8,13 +9,14 @@ trait StructLayout[S <: Struct] extends Sized[S] {
   def offset(fieldIdx: Int): Address
 }
 
-object CompactLayouter {
-  case class CompactStructLayout[S <: Struct](size: Long, offsets: Array[Long]) extends StructLayout[S] {
+trait CompactLayout[S <: Struct] extends StructLayout[S]
+object CompactLayout {
+  case class LayoutInfo[S <: Struct](size: Long, offsets: Array[Long]) extends CompactLayout[S] {
     def offset(fieldIdx: Int): Address = Address.unsafe(offsets(fieldIdx))
   }
-  inline def compactLayout[S <: Struct: Struct.StructOf as m]: StructLayout[S] = {
+  inline def derived[S <: Struct: Mirror.ProductOf as m]: CompactLayout[S] = {
     val sizes = compiletime.summonAll[Tuple.Map[m.MirroredElemTypes, Sized]].toList
     val offsets = sizes.scanLeft(0L)((acc, f) => acc + f.asInstanceOf[Sized[?]].size)
-    CompactStructLayout[S](offsets.last, offsets.toArray.init)
+    LayoutInfo[S](offsets.last, offsets.toArray.init)
   }
 }
