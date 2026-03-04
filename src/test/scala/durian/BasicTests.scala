@@ -107,4 +107,11 @@ class BasicTests extends munit.FunSuite {
     assertEquals(c.at(1).→.red(), 15.toByte)
     assertEquals(c.at(2).→.red(), 0.toByte)
   }
+
+  test("JFMA pointers") {
+    val mem = memorySegment
+    val color: jfma.JfmaPointer[Color] = mem.asInstanceOf
+    color.→.red := 5
+    println(s"jfma pointer color = ${color.→.red()}")
+  }
 }
