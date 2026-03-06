@@ -20,5 +20,22 @@ object Sized {
   }
   given [S <: Struct]: Sized[NestedPointer[S]] = Sized.of[Address].asInstanceOf
 
+  trait Max[T] extends Sized[T]
+  def max[T](s: Long) = new Max[T] { def size = s }
+  trait Sum[T] extends Sized[T]
+  def sum[T](s: Long) = new Sum[T] { def size = s }
+
+  inline given [Tup <: Tuple]: Max[Tup] = {
+    val sizes = compiletime.summonAll[Tuple.Map[Tup, Sized]]
+    val maxSize = sizes.toList.foldLeft(0L)((acc, s) => math.max(acc, s.asInstanceOf[Sized[?]].size))
+    max[Tup](maxSize)
+  }
+
+  inline given [Tup <: Tuple]: Sum[Tup] = {
+    val sizes = compiletime.summonAll[Tuple.Map[Tup, Sized]]
+    val totalSize = sizes.toList.foldLeft(0L)((acc, s) => acc + s.asInstanceOf[Sized[?]].size)
+    sum[Tup](totalSize)
+  }
+
   transparent inline def of[T](using s: Sized[T]): s.type = s
 }

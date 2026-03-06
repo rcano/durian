@@ -1,4 +1,5 @@
 package durian
+package jfma
 
 import java.lang.foreign.ValueLayout
 
