@@ -2,6 +2,7 @@ package durian
 
 import java.lang.foreign as jfm
 import durian.jfma.Arena
+import durian.jfma.LayoutUtils
 
 class BasicTests extends munit.FunSuite {
   def memorySegment: jfm.MemorySegment = java.lang.foreign.MemorySegment.ofArray(new Array[Byte](128))
