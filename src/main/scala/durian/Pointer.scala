@@ -11,7 +11,7 @@ object Pointer {
   def unsafe[T, Mem](a: Address): Pointer[T, Mem] = a
 
   extension [T, Mem: Precise](p: Pointer[T, Mem]) {
-    def pointerAddress: Address = p
+    inline def pointerAddress: Address = p
 
     inline def apply()(using s: Des[T], memSeg: MemorySegment[Mem]): s.Out[Mem] = {
       val mem = implicitMem[Mem]

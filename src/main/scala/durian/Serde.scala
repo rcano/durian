@@ -33,8 +33,8 @@ object Ser {
   given [U](using s: Sized[NestedPointer[U]]): Ser[NestedPointer[U]] with {
     type In[Mem] = Pointer[U, Mem]
     def write[Mem: MemorySegment](mem: Mem)(p: Address, v: Pointer[U, Mem]) = s.size match {
-      case 8 => mem.getLong(p)
-      case 4 => mem.getInt(p)
+      case 8 => mem.setLong(p, mem.getLong(v.pointerAddress))
+      case 4 => mem.setInt(p, mem.getInt(v.pointerAddress))
       case other => throw new IllegalStateException(s"Pointer of size $other is not supported")
     }
   }

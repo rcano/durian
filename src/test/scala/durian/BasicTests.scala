@@ -126,4 +126,16 @@ class BasicTests extends munit.FunSuite {
     color.→.red := 5
     println(s"jfma pointer color = ${color.→.red()}")
   }
+
+  test("JFMA pointers to structs assigning a jfma pointer") {
+    case class Rectangle(topLeft: jfma.JfmaPointer[Point], botRight: jfma.JfmaPointer[Point]) extends Struct derives CompactLayout
+    val arena = Arena(java.lang.foreign.Arena.ofAuto())
+
+    val r: jfma.JfmaPointer[Rectangle] = arena.allocStruct[Rectangle]
+    val p: jfma.JfmaPointer[Point] = arena.allocStruct[Point]
+    val t1 = r.→.botRight
+    r.→.botRight := p
+    val tl = r.→.topLeft() // intermediate step sadly required to capture the singleton memory-segment
+    tl.→.y := 15
+  }
 }
